@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:just_audio_example/common.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 Future<void> main() async {
   await JustAudioBackground.init(
@@ -24,40 +27,6 @@ class _MyAppState extends State<MyApp> {
   static int _nextMediaId = 0;
   late AudioPlayer _player;
   final _playlist = ConcatenatingAudioSource(children: [
-    ClippingAudioSource(
-      start: Duration(seconds: 60),
-      end: Duration(seconds: 90),
-      child: AudioSource.uri(Uri.parse(
-          "https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3")),
-      tag: MediaItem(
-        id: '${_nextMediaId++}',
-        album: "Science Friday",
-        title: "A Salute To Head-Scratching Science (30 seconds)",
-        artUri: Uri.parse(
-            "https://media.wnyc.org/i/1400/1400/l/80/1/ScienceFriday_WNYCStudios_1400.jpg"),
-      ),
-    ),
-    AudioSource.uri(
-      Uri.parse(
-          "https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3"),
-      tag: MediaItem(
-        id: '${_nextMediaId++}',
-        album: "Science Friday",
-        title: "A Salute To Head-Scratching Science",
-        artUri: Uri.parse(
-            "https://media.wnyc.org/i/1400/1400/l/80/1/ScienceFriday_WNYCStudios_1400.jpg"),
-      ),
-    ),
-    AudioSource.uri(
-      Uri.parse("https://s3.amazonaws.com/scifri-segments/scifri201711241.mp3"),
-      tag: MediaItem(
-        id: '${_nextMediaId++}',
-        album: "Science Friday",
-        title: "From Cat Rheology To Operatic Incompetence",
-        artUri: Uri.parse(
-            "https://media.wnyc.org/i/1400/1400/l/80/1/ScienceFriday_WNYCStudios_1400.jpg"),
-      ),
-    ),
     AudioSource.uri(
       Uri.parse("asset:///audio/nature.mp3"),
       tag: MediaItem(
@@ -266,20 +235,38 @@ class _MyAppState extends State<MyApp> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          child: Icon(Icons.add),
-          onPressed: () {
-            _playlist.add(AudioSource.uri(
-              Uri.parse("asset:///audio/nature.mp3"),
-              tag: MediaItem(
-                id: '${_nextMediaId++}',
-                album: "Public Domain",
-                title: "Nature Sounds ${++_addedCount}",
-                artUri: Uri.parse(
-                    "https://media.wnyc.org/i/1400/1400/l/80/1/ScienceFriday_WNYCStudios_1400.jpg"),
-              ),
-            ));
-          },
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: Row(
+          children: [
+            FloatingActionButton(
+              child: Icon(Icons.remove),
+              onPressed: () {
+                if (_playlist.length > 0) _playlist.removeAt(0);
+              },
+            ),
+            FloatingActionButton(
+              child: Icon(Icons.add),
+              onPressed: () async {
+                // https://music.youtube.com/watch?v=1vrEljMfXYo
+                String vid = '1vrEljMfXYo';
+                var yt = YoutubeExplode();
+                var video = await yt.videos.get(vid);
+                StreamManifest manifest =
+                    await yt.videos.streamsClient.getManifest(vid);
+                var streamInfo = manifest.audioOnly
+                    .where((streamInfo) => streamInfo.container.name == 'mp4')
+                    .withHighestBitrate();
+                log(streamInfo.url.toString());
+                await _playlist.add(AudioSource.uri(streamInfo.url,
+                    tag: MediaItem(
+                      id: vid,
+                      title: video.title,
+                      album: 'test',
+                      artist: video.author,
+                    )));
+              },
+            ),
+          ],
         ),
       ),
     );
